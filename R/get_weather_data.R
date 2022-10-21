@@ -1,6 +1,11 @@
 get_weather_data <- function(lat, lon){
   
-  # current, forecast
+  api_key = Sys.getenv('OPENWEATHERMAP_API_KEY')
+  
+  if (api_key == ''){
+    stop('OPENWEATHERMAP_API_KEY environmental variable not set')
+  }
+  
   api_call <- glue::glue('https://api.openweathermap.org/data/2.5/forecast?lat={lat}&lon={lon}&appid={api_key}&units=metric')
   
   api_call_full <-
