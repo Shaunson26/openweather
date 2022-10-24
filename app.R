@@ -4,6 +4,10 @@ library(httr2)
 library(dplyr)
 library(ggplot2)
 library(geoloc)
+library(reactable)
+library(shinybusy)
+library(leaflet)
+library(plotly)
 
 
 for(i in list.files('R/', full.names = TRUE)){
@@ -14,7 +18,7 @@ cities <- read.csv('australian-cities-coords.csv')
 
 ui <- 
   fluidPage(
-    style='max-width: 800px; margin: auto;',
+    style='max-width: 1000px; margin: auto;',
     geoloc::onload_geoloc(),
     titlePanel("Open Weather"),
     fluidRow(
@@ -24,7 +28,15 @@ ui <-
     ),
     fluidRow(
       column(12, selectInput('cities', 'Location', choices = c('My location', cities$Place.Name)))
-    )
+    ),
+    tabsetPanel(
+      tabPanel('Dashboard',
+               dashboard_view_ui()
+      ),
+      tabPanel("Row view", value = 'row-view'),
+      tabPanel("Reactable view", value = 'reactable-view', reactableOutput('forecast_reactable'))
+    ),
+    shinybusy::add_busy_spinner(spin = "fading-circle", position = "top-right")
   )
 
 # Define server logic required to draw a histogram
@@ -44,66 +56,42 @@ server <- function(input, output) {
   
   observeEvent(coords(), {
     
+    show_spinner() 
+    
     lat = as.numeric(coords()[1]) %>% round(2)
     lon = as.numeric(coords()[2]) %>% round(2)
     
     #message('Using: ', lat, ', ', lon)
     
-    data <- get_weather_data(lat = lat, lon = lon)
+    forecast_time <- format(Sys.time(), '%H:%M on %A %d %B %Y')
     
+    data <- get_weather_data(lat = lat, lon = lon)
     #saveRDS(data, file = 'data.rds')
     #data <- readRDS('data.rds')
     
-    forcast_time <- format(Sys.time(), '%H:%M on %A %d %B %Y')
+    dashboard_view_server(data, forecast_time, output)
     
     # Clear previous results
-    
-    removeUI(selector = '.weather-data-row', multiple = TRUE)
-    removeUI(selector = '#forecast-hr', multiple = TRUE)
-    removeUI(selector = '#forecast-time', multiple = TRUE)
-    removeUI(selector = '#forecast-city', multiple = TRUE)
-    
+    removeUI(selector = '#forecast-row-display', multiple = TRUE)
     
     # Update page
-    forecast_city <-
-      fluidRow(id = 'forecast-city',
-               column(width = 12,
-                      h3(glue::glue("{data$city$name} forecast"))
-               )
-      )
+    output$forecast_reactable <-
+      renderReactable({
+        create_reactable_view(data = data)
+      })
     
-    forecast_time <-
-      fluidRow(id = 'forecast-time',
-               column(width = 12,
-                      p(glue::glue("Forecast collected at {forcast_time}."))
-               )
-      )
-    
-    hr_separator <-
-      hr(id = 'forecast-hr', style = 'margin: 12px;')
-    
-    weather_data_rows <-
-      lapply(data$list, create_weather_data_row) %>%
-      tagList()
+    results <-
+      create_row_forecast_display(data, time = forecast_time, id = 'forecast-row-display')
     
     # Insert UI
-    insertUI(selector = '.container-fluid',
+    insertUI(selector = "div[data-value='row-view']",
              where = "beforeEnd",
-             ui = forecast_city)
+             ui = results)
     
-    insertUI(selector = '.container-fluid',
-             where = "beforeEnd",
-             ui = forecast_time)
-    
-    insertUI(selector = '.container-fluid',
-             where = "beforeEnd",
-             ui = hr_separator)
-    
-    insertUI(selector = '.container-fluid',
-             where = "beforeEnd",
-             ui = weather_data_rows)
+    hide_spinner() 
     
   })
+  
   
 }
 
