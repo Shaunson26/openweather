@@ -36,7 +36,9 @@ ui <-
     tabsetPanel(
       tabPanel('Dashboard', dashboard_view_ui()),
       tabPanel("Row view", value = 'row-view'),
-      tabPanel("Grid view", value = 'grid-view')
+      tabPanel("Grid view", value = 'grid-view',
+               tags$style('@media only screen and (max-width: 600px) { 
+                           .grid-container { overflow-x: scroll;}}'))
     ),
     shinybusy::add_busy_spinner(spin = "fading-circle", position = "top-right")
   )

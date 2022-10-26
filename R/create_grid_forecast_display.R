@@ -53,8 +53,7 @@ create_grid_forecast_display <- function(data){
   display: grid;
   grid-template-columns:  repeat(9, 1fr);
   grid-gap: 2px;
-  padding: 2px; white-space: nowrap;margin-top: 16px;border-radius: 16px;
-    overflow: hidden;}"
+  padding: 2px; white-space: nowrap;margin-top: 16px;border-radius: 16px;}"
       ),
       tags$style(".grid-item {
   background-color: var(--pc-blue-dark);
