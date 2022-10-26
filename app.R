@@ -9,37 +9,39 @@ library(shinybusy)
 library(leaflet)
 library(plotly)
 
-
+# Custom UI, functions and data
 for(i in list.files('R/', full.names = TRUE)){
   source(i)
 }
 
 cities <- read.csv('australian-cities-coords.csv')
 
+# UI ----
 ui <- 
   fluidPage(
-    style='max-width: 1000px; margin: auto;',
+    tags$link(rel="stylesheet", href="fonts.css"),
+    tags$link(rel="stylesheet", href="colours.css"),
+    tags$link(rel="stylesheet", href="styles.css"),
     geoloc::onload_geoloc(),
-    titlePanel("Open Weather"),
+    h1("Weather forecaster"),
+    title = 'Weather forecaster',
     fluidRow(
+      style='background-color:var(--pc-blue-dark);margin-bottom: 16px;padding-top: 16px;border-radius:16px;',
       column(12,
-             p('Get location forecast from openweathermap.org using your location or an Australian city.')
+             p('Get location forecast from openweathermap.org using your location or an Australian city.',
+             'Returned data location name may not match input location and is the closest locatoin based on lat/lon.'),
+             selectInput('cities', 'Location', choices = c('My location', cities$Place.Name))
       )
     ),
-    fluidRow(
-      column(12, selectInput('cities', 'Location', choices = c('My location', cities$Place.Name)))
-    ),
     tabsetPanel(
-      tabPanel('Dashboard',
-               dashboard_view_ui()
-      ),
+      tabPanel('Dashboard', dashboard_view_ui()),
       tabPanel("Row view", value = 'row-view'),
-      tabPanel("Reactable view", value = 'reactable-view', reactableOutput('forecast_reactable'))
+      tabPanel("Grid view", value = 'grid-view')
     ),
     shinybusy::add_busy_spinner(spin = "fading-circle", position = "top-right")
   )
 
-# Define server logic required to draw a histogram
+# Server ----
 server <- function(input, output) {
   
   coords <-
@@ -73,20 +75,28 @@ server <- function(input, output) {
     
     # Clear previous results
     removeUI(selector = '#forecast-row-display', multiple = TRUE)
+    removeUI(selector = '.grid-container', multiple = TRUE)
     
     # Update page
-    output$forecast_reactable <-
-      renderReactable({
-        create_reactable_view(data = data)
-      })
+    # output$forecast_reactable <-
+    #   renderReactable({
+    #     create_reactable_view(data = data)
+    #   })
     
-    results <-
+    row_results <-
       create_row_forecast_display(data, time = forecast_time, id = 'forecast-row-display')
+    
+    grid_results <-
+      create_grid_forecast_display(data)
     
     # Insert UI
     insertUI(selector = "div[data-value='row-view']",
              where = "beforeEnd",
-             ui = results)
+             ui = row_results)
+    
+    insertUI(selector = "div[data-value='grid-view']",
+             where = "beforeEnd",
+             ui = grid_results)
     
     hide_spinner() 
     

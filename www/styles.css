@@ -1,0 +1,29 @@
+body {
+  max-width: 1000px; 
+  margin: auto;
+  background-color: var(--pc-blue);
+  color: white;
+  font-family: comfortaa, Arial, Helvetica, sans-serif;
+}
+
+/*.nav-tabs>li.active>a, .nav-tabs>li.active>a:focus, .nav-tabs>li.active>a:hover {*/
+
+.nav-tabs {
+  border-bottom: 1px solid var(--pc-blue-dark);
+}
+
+.nav-tabs>li>a {
+    color: white;
+}
+
+.nav-tabs>li.active>a, .nav-tabs>li.active>a:focus, .nav-tabs>li.active>a:hover {
+    color: white;
+    background-color: var(--pc-blue-dark);
+    border: 1px solid var(--pc-blue-dark);
+    border-bottom-color: transparent;
+}
+
+.nav-tabs>li.active>a:hover, .nav-tabs>li>a:hover {
+    color: var(--pc-blue-dark);
+    background-color: white;
+}
