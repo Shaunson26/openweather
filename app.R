@@ -27,10 +27,10 @@ ui <-
     title = 'Weather forecaster',
     fluidRow(
       style='background-color:var(--pc-blue-dark);margin-bottom: 16px;padding-top: 16px;border-radius:16px;',
-      column(12,
+      column(12, id = 'select-column',
              p('Get location forecast from openweathermap.org using your location or an Australian city.',
-             'Returned data location name may not match input location and is the closest locatoin based on lat/lon.'),
-             selectInput('cities', 'Location', choices = c('My location', cities$Place.Name))
+               'Returned data location name may not match input location and is the closest locatoin based on lat/lon.')
+             #selectInput('cities', 'Location', choices = NULL)
       )
     ),
     tabsetPanel(
@@ -39,69 +39,90 @@ ui <-
       tabPanel("Grid view", value = 'grid-view',
                tags$style('@media only screen and (max-width: 600px) { 
                            .grid-container { overflow-x: scroll;}}'))
-    ),
-    shinybusy::add_busy_spinner(spin = "fading-circle", position = "top-right")
+    )#,
+    #shinybusy::add_busy_spinner(spin = "fading-circle", position = "top-right")
   )
 
 # Server ----
-server <- function(input, output) {
+server <- function(input, output, session) {
+  
+  # Create location list, user geoloc is permitted
+  observe({
+    
+    #message('input$geoloc_lat changed')
+    #message('initializing locations')
+    
+    location_choices <- cities$Place.Name
+    location_selected <- sample(location_choices, 1)
+    
+    if (!input$geoloc_lat %in% c("NOT_SUPPORTED", "PERMISSION_DENIED", "POSITION_UNAVAILABLE", "TIMEOUT")){
+      #message('adding user form location list')
+      location_choices <- c('My location', location_choices)
+      location_selected <- location_choices[1]
+    } 
+    
+    #message('updating SelectInput')
+    
+    insertUI('#select-column', where = 'beforeEnd', 
+             ui = selectInput('cities', label = 'Locations',
+                              choices = location_choices, 
+                              selected = location_selected))
+    
+  }) %>% 
+    bindEvent(input$geoloc_lat)
   
   coords <-
     reactive({
-      
-      if (input$cities == 'My location') {
-        coords <- c(input$geoloc_lat, input$geoloc_lon)
+      if (input$cities == 'My location'){
+        c(input$geoloc_lat, input$geoloc_lon)
       } else {
-        coords <-
-          cities[cities$Place.Name == input$cities, c('Latitude', 'Longitude')]
+        cities[cities$Place.Name == input$cities, c('Latitude', 'Longitude')]
       }
-      
-    })
-  
-  observeEvent(coords(), {
-    
-    show_spinner() 
-    
+    }) %>% 
+    bindEvent(input$cities)
+
+  observeEvent(coords(), handlerExpr = {
+
+    #message('coords received')
+
+    show_spinner()
+
     lat = as.numeric(coords()[1]) %>% round(2)
     lon = as.numeric(coords()[2]) %>% round(2)
-    
+
     #message('Using: ', lat, ', ', lon)
-    
+
     forecast_time <- format(Sys.time(), '%H:%M on %A %d %B %Y')
-    
+
     data <- get_weather_data(lat = lat, lon = lon)
     #saveRDS(data, file = 'data.rds')
     #data <- readRDS('data.rds')
-    
+
     dashboard_view_server(data, forecast_time, output)
-    
+
     # Clear previous results
     removeUI(selector = '#forecast-row-display', multiple = TRUE)
     removeUI(selector = '.grid-container', multiple = TRUE)
-    
-    # Update page
-    # output$forecast_reactable <-
-    #   renderReactable({
-    #     create_reactable_view(data = data)
-    #   })
-    
+
+    # Update page ----
+    # Create
     row_results <-
       create_row_forecast_display(data, time = forecast_time, id = 'forecast-row-display')
-    
+
     grid_results <-
       create_grid_forecast_display(data)
-    
-    # Insert UI
+
+    # Insert
     insertUI(selector = "div[data-value='row-view']",
              where = "beforeEnd",
              ui = row_results)
-    
+
     insertUI(selector = "div[data-value='grid-view']",
              where = "beforeEnd",
              ui = grid_results)
-    
-    hide_spinner() 
-    
+
+    hide_spinner()
+
   })
   
   
